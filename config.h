@@ -4,7 +4,10 @@
 #include "pwd.h" 
 #include "name.h"
 
-void init(); 				// To Initialize the shell
+// Returns 1 (on failure)
+int init(); 				// To Initialize the shell
+
+
 void terminate(); 			// To terminate the shell (deallocate env vars)
 
 #endif

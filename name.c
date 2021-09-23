@@ -8,8 +8,8 @@ struct utsname* buf;    // Struct to store hostname
 // Username and Hostname
 //-------------------------------------
 
-
-void set_username() {
+// Returns 1 on failure
+int set_username() {
 
 	struct passwd* pwd; // pointer to store getpwuid output
 
@@ -17,29 +17,33 @@ void set_username() {
     if((pwd = getpwuid(getuid())) == NULL)
     {
         perror("username");
-        exit(EXIT_FAILURE);
+        return 1;
     }
 
     username = pwd->pw_name;
+    return 0;
 }
 
-void set_hostname() {
+// Returns 1 on failure
+int set_hostname() {
 
     if((buf = malloc(sizeof(struct utsname))) == NULL) {
 		perror("Allocation Error");
-		exit(EXIT_FAILURE);
+		return 1;
 	}
 
     // uname gives information about current system
     if(uname(buf) == -1) {
         perror("hostname");
-        exit(EXIT_FAILURE);
+        return 1;
     }
 
     // buf->nodename contains the hostname
+    return 0;
 }
 
 // To deallocate memory
 void name_free() {
-    free(buf);
+    if(buf != NULL)
+        free(buf);
 }

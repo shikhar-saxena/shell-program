@@ -11,10 +11,15 @@ int (*func[])(int, char**) = {&cmd_exit, &cmd_pwd, &cmd_echo, &cmd_cd, &ls, &rep
 
 int execute(int argc, char** argv) {
 
-	for(int i = 0; i < CMD_SIZE; i++)
-	    if(strcmp(CMDS[i], argv[0]) == 0)
-	        return (func[i])(argc, argv);
+    // For builtin (user-defined) commands
+    for(int i = 0; i < CMD_SIZE; i++) {
+        if (strcmp(CMDS[i], argv[0]) == 0) {
+            return (func[i])(argc, argv);
+        }
+    }
 
+    // System Command
+    //!!! Add system command handling
 	return 0;
 }
 
@@ -51,7 +56,7 @@ int cmd_echo(int argc, char** argv) {
 }
 
 int cmd_cd(int argc, char** argv) {
-	
+
 	switch(argc) {
 		case 1: 				// cd
 			change_old_pwd(); 	// Set old_pwd to pwd

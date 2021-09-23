@@ -8,19 +8,20 @@ char* home; size_t home_size;
 //-------------------------------------
 
 // Function to set old_pwd to current pwd
-void change_old_pwd() {
+int change_old_pwd() {
 	if(old_pwd != NULL) free(old_pwd);
 
-	if((old_pwd = malloc(strlen(pwd))) == NULL) {
+	if((old_pwd = malloc(strlen(pwd) + 1)) == NULL) {
 		perror("Allocation Error");
-		exit(EXIT_FAILURE);
+		return 1;
 	}
 
 	strcpy(old_pwd, pwd);
+    return 0;
 }
 
 // Sets pwd and old_pwd
-void set_pwd() {
+int set_pwd() {
 
 	if(pwd != NULL) { // Change old_pwd
 		change_old_pwd();
@@ -31,26 +32,28 @@ void set_pwd() {
 
 	if(pwd == NULL) {
 		perror("pwd");
-		exit(EXIT_FAILURE);
+		return 1;
 	}
+    return 0;
 }
 
 // Set home
-void set_home() {
+int set_home() {
 	// Set home and home_size
 	home_size = strlen(pwd);
 
-    if((home = malloc(home_size)) == NULL) {
+    if((home = malloc(home_size + 1)) == NULL) {
 		perror("Allocation Error");
-		exit(EXIT_FAILURE);
+	    return 1;
 	}
 
 	strcpy(home, pwd);
+    return 0;
 }
 
 // Deallocate memory
 void pwd_free() {
-	free(pwd);
+	if(pwd != NULL) free(pwd);
 	if(old_pwd != NULL) free(old_pwd);
-	free(home);
+	if(home != NULL) free(home);
 }
