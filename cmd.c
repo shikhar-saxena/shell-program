@@ -1,27 +1,6 @@
 #include "headers.h"
 #include "config.h"
 #include "utils.h"
-#include "cmd.h"
-
-const char* CMDS[CMD_SIZE] = {
-	"exit", "pwd", "echo", "cd", "ls", "repeat"
-};
-
-int (*func[])(int, char**) = {&cmd_exit, &cmd_pwd, &cmd_echo, &cmd_cd, &ls, &repeat};
-
-int execute(int argc, char** argv) {
-
-    // For builtin (user-defined) commands
-    for(int i = 0; i < CMD_SIZE; i++) {
-        if (strcmp(CMDS[i], argv[0]) == 0) {
-            return (func[i])(argc, argv);
-        }
-    }
-
-    // System Command
-    //!!! Add system command handling
-	return 0;
-}
 
 //-------------------------------------
 // Shell Commands
@@ -58,47 +37,43 @@ int cmd_echo(int argc, char** argv) {
 int cmd_cd(int argc, char** argv) {
 
 	switch(argc) {
-		case 1: 				// cd
-			change_old_pwd(); 	// Set old_pwd to pwd
-			strcpy(pwd, home); 	// cd to home
-			return 0;
+		case 1: chdir(home); break;
 		
 		case 2:
 			// cd - or cd ~-
 			if(strcmp(argv[1], "-") == 0 || strcmp(argv[1], "~-") == 0) {
 				
-				if(old_pwd != NULL) {
-					// Swap pwd and old_pwd
-					char* temp = old_pwd;
-					old_pwd = pwd;
-					pwd = temp;
-				}
-				else fprintf(stderr, "cd: OLDPWD not set\n");
-
-				return 0;
+				if(old_pwd != NULL) chdir(old_pwd);
+				else {
+                    fprintf(stderr, "cd: OLDPWD not set\n");
+                    return 0;
+                }
+                break;
 			}
 
 			// Path given as second argument		
 			char* str;
 
 			// Make Path
-			str = (argv[1][0] == '~') ? make_path(argv[1]) : argv[1];
+			str = (argv[1][0] == '~') ? make_path(home, home_size, (argv[1] + 1), strlen(argv[1]) - 1) : argv[1];
+
+            if(str == NULL) return 1;
 
 			// Call chdir function
-			if(chdir(str) == -1)
-				fprintf(stderr, "cd: %s: %s\n", argv[1], strerror(errno));
-			
-			else set_pwd(); // set pwd and old_pwd
-			
-			// free str if it was relative path
-			if(argv[1][0] == '~') str_free(str);
+			if(chdir(str) == -1) {
+                fprintf(stderr, "cd: %s: %s\n", argv[1], strerror(errno));
+                return 0;
+            }
 
-			return 0;
-		
+			// free str if it was relative path
+			if(argv[1][0] == '~') path_free(str);
+            break;
+
 		default:
-			fprintf(stderr, "cd: too many arguments\n");
+            fprintf(stderr, "cd: too many arguments\n"); return 0;
 	}
 
+    set_pwd();
 	return 0;
 }
 
@@ -273,7 +248,10 @@ int ls(int argc, char** argv) {
 	for(; optind < argc; optind++)  {
 
 		// Get absolute path
-		path = (argv[optind][0] == '~') ? make_path(argv[optind]) : argv[optind];
+		path = (argv[optind][0] == '~') ? make_path(home, home_size, (argv[1] + 1), strlen(argv[1]) - 1) : argv[optind];
+
+        if(path == NULL)
+            return 1; // Allocation Failure
 
 		struct stat stat_buf;
 
@@ -296,30 +274,8 @@ int ls(int argc, char** argv) {
 			ls_file_display(a_flag, l_flag, path, path);
 
 		if(optind != argc - 1) printf("\n");
-		if(argv[optind][0] == '~') str_free(path);
+		if(argv[optind][0] == '~') path_free(path);
 	}
 
-	return 0;
-}
-
-int repeat(int argc, char** argv) {
-	if(argc < 3) {
-		fprintf(stderr, "repeat: less arguments\n");
-		return 0;
-	}
-
-	// Convert 2nd argument to numeric type
-	long int val; char* end_ptr;
-	val = strtol(argv[1], &end_ptr, 10);
-
-	if((end_ptr == argv[1]) || (*end_ptr != '\0')){ // Invalid
-		fprintf(stderr, "repeat: invalid argument \'%s\'\n", argv[1]);
-		return 0;
-	}
-
-	// Execute the given command
-	for(long int i = 1; i <= val; i++) {
-		if(execute(argc - 2, (argv + 2)) == 1) return 1;
-	}
 	return 0;
 }

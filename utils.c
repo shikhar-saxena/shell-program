@@ -1,36 +1,27 @@
 #include "headers.h"
 #include "config.h"
 
-//-------------------------------------
-// '~' substitution
-//-------------------------------------
+// Concatenates relative path "rel_path" at the end of absolute path "abs_path"
+// Returns the new path respectively
+char* make_path(char* abs_path, size_t abs_path_size, char* rel_path, size_t rel_path_size) {
 
-// Make absolute path for given relative path 'path'
-// Relative path with respect to home directory
-// Returns the new path
-char* make_path(char* path) {
-    
-    // path will begin with '~'
-    size_t str_size = home_size + strlen(path); // Includes '\0'
-    char* str = malloc(str_size);
-    if(str == NULL) {
+    // Get size for new path (to be made)
+    size_t path_size = abs_path_size + rel_path_size + 1; // 1 to accomadate '/' in between the concatenation
+    char* path = malloc(path_size + 1); // For '\0'
+    if(path == NULL) {
         perror("Allocation Error");
-        exit(EXIT_FAILURE);
+        return NULL; // Failure
     }
 
-    size_t i;
-    for(i = 0; i < home_size; i++)
-        str[i] = home[i];
+    strncpy(path, abs_path, abs_path_size + 1);
+    strcat(path, "/");
+    strncat(path, rel_path, rel_path_size + 1);
 
-    for(; i < str_size; i++) {
-        str[i] = path[i - home_size + 1]; // Includes '\0'
-    }
-
-    return str;
-    // str will be freed after use (by calling str_free function)
+    return path;
+    // path will be freed after use (by calling path_free function)
 }
 
 // Deallocates memory
-void str_free(char* str) {
-    free(str);
+void path_free(char* str) {
+    if(str != NULL) free(str);
 }

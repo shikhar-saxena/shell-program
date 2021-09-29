@@ -1,6 +1,6 @@
 #include "headers.h"
 #include "config.h"
-#include "cmd.h"
+#include "exec.h"
 
 #define TOKEN_BUFFER_SIZE 64 // Number of arguments read in each line
 
@@ -37,7 +37,7 @@ int shell_loop() {
         display_prompt();
 
         // Read
-        char* read_buffer; size_t buffer_size = 0;
+        char* read_buffer = NULL; size_t buffer_size = 0;
         
         if(getline(&read_buffer, &buffer_size, stdin) == -1) {
             if(!feof(stdin)) {
@@ -69,6 +69,8 @@ int shell_loop() {
                 sub_token = strtok(NULL, " \t\r\a\n");
             }
 
+            argv[count] = NULL; // Last argument as NULL (if argc is not passed)
+
             // Execute the command
             status = execute(count, argv);
 
@@ -80,7 +82,7 @@ int shell_loop() {
         }
 
         free(read_buffer);
-        read_buffer = NULL;
+
     } while(status == 0);
 
     return status;
