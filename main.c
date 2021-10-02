@@ -25,6 +25,37 @@ void display_prompt() {
     else printf("%s>", pwd);
 }
 
+char** parse(char* line) {
+
+    const char* delim = " \t\r\a\n"; char* save_ptr;
+    char* token = strtok_r(line, delim, &save_ptr);
+    char** argv; // To store each token in the line
+
+    int count = 0; // To count argc
+    argv = malloc(TOKEN_BUFFER_SIZE * sizeof(char*));
+
+    while(token != NULL) {
+        argv[count] = malloc(strlen(token) + 1);
+        strcpy(argv[count], token);
+
+        //!!! Realloc Part???
+
+        count++;
+        token = strtok_r(NULL, delim, &save_ptr);
+    }
+
+    argv[count] = NULL;
+    return argv;
+}
+
+int args_count(char** argv) {
+
+    int count = 0;
+    while(argv[count] != NULL) count++;
+
+    return count;
+}
+
 // read-eval-process-loop for shell
 // Returns 1 on failure (terminate shell)
 int shell_loop() {
@@ -41,44 +72,29 @@ int shell_loop() {
         
         if(getline(&read_buffer, &buffer_size, stdin) == -1) {
             if(!feof(stdin)) {
-                // Error has occurred
                 perror("Error");
                 free(read_buffer);
                 return 1;
             }
         }
         
-        // Tokenize the input
-        char* token = strtok(read_buffer, ";\n");
+        // Tokenize the input into lines
+        char* save_ptr;
+        char* token = strtok_r(read_buffer, ";\n", &save_ptr);
         while(token != NULL) {
 
-            // Subtokenize each input command
-            char* sub_token = strtok(token, " \t\r\a\n");
-            char** argv; // To store each token in the command
-
-            int count = 0; // To count argc
-            argv = malloc(TOKEN_BUFFER_SIZE * sizeof(char*));
-
-            while(sub_token != NULL) {
-                argv[count] = malloc(strlen(sub_token) + 1);
-                strcpy(argv[count], sub_token);
-                count++;
-
-                //!!! Realloc Part???
-
-                sub_token = strtok(NULL, " \t\r\a\n");
-            }
-
-            argv[count] = NULL; // Last argument as NULL (if argc is not passed)
+            char** argv = parse(token); // Call parse function
 
             // Execute the command
+            int count = args_count(argv);
             status = execute(count, argv);
 
             // Free argv
-            while (count-- != 0)
+            while (count-- != 0) 
                 free(argv[count]);
             free(argv);
-            token = strtok(NULL, ";\n");
+
+            token = strtok_r(NULL, ";\n", &save_ptr);
         }
 
         free(read_buffer);
