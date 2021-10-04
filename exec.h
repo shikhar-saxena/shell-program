@@ -12,6 +12,7 @@ extern int (*func[])(int, char**);
 // Function calls the appropriate shell function
 // And returns respective status
 int execute(int, char**);
+int launch_fg(int argc, char** argv);
 
 int repeat(int argc, char** argv);
 

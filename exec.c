@@ -30,7 +30,30 @@ int repeat(int argc, char** argv) {
     return 0;
 }
 
+// Launches in foreground
+int launch_fg(int argc, char** argv) {
+    int status;
+    pid_t pid = fork(), w;
+
+    if(pid < 0) { perror("Fork"); return 1;}
+
+    if(pid == 0) { 
+        if (execvp(argv[0], argv) == -1)
+            perror(argv[0]);
+        exit(0);
+    }
+    else do { 
+        w = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+        if(w == -1) { perror("waitpid"); exit(1); }
+
+    } while(!WIFEXITED(status) && !WIFSIGNALED(status));
+
+    return 0;
+}
+
 int execute(int argc, char** argv) {
+    
+    if(argc == 0) return 0;
 
     // For builtin (user-defined) commands
     for(int i = 0; i < CMD_SIZE; i++) {
@@ -40,15 +63,5 @@ int execute(int argc, char** argv) {
     }
 
     // system command
-    pid_t pid = fork();
-
-    if(pid < 0) perror("Fork");
-    else if(pid > 0) wait(NULL);
-    else {
-        if (execvp(argv[0], argv) == -1)
-            perror(argv[0]);
-        return 1;
-    }
-
-    return 0;
+    return launch_fg(argc, argv);
 }
