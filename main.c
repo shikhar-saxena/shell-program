@@ -1,7 +1,7 @@
 #include "headers.h"
 #include "config.h"
 #include "exec.h"
-#include "utils.h"
+#include "utils.h" //!!!!
 
 #define TOKEN_BUFFER_SIZE 100 // Number of arguments read in each line
 
@@ -26,7 +26,7 @@ void display_prompt() {
     else printf("%s>", pwd);
 }
 
-//!!!!
+// Parses given line into words
 char** parse(char** line) {
 
     const char* delim = " \t\r\a\n"; char* save_ptr;
@@ -109,43 +109,15 @@ int check_character(char** line, char** first, char** second, const char* charac
     char* ptr = NULL;
     for(int i = 0; i < 2; i++) {
         ptr = strsep(line, character);
-        // printf("%s\n", ptr);
 
         if(ptr == NULL) break;
         if(i == 0) *first = ptr;
         else *second = ptr;
     }
 
-    if(*second == NULL) return 1;
+    if(*second == NULL) return 1; // Operator not found
     else return 0;
 }
-
-
-// // Evaluates given input line
-// // Returns status
-// int eval(char** line) {
-
-//     // Parse the input
-//     char** argv = parse(line);
-
-//     // Execute the command
-//     int argc = args_count(argv);
-
-//     // Check for pipeline
-
-
-//     // Check for redirection
-//     int status = redirection(argc, argv);
-
-//     // int status = execute(count, argv);
-
-//     free_argv(/*argc,*/ argv);
-
-//     return status;
-// }
-
-
-
 
 // REPL for shell
 // Returns 1 on failure (terminate shell)
@@ -161,12 +133,10 @@ int shell_loop() {
         // Read
         char* read_buffer = NULL; size_t buffer_size = 0;
         
-        if(getline(&read_buffer, &buffer_size, stdin) == -1) {
-            if(!feof(stdin)) {
-                perror("Error");
-                free(read_buffer);
-                return 1;
-            }
+        if(getline(&read_buffer, &buffer_size, stdin) == -1 && !feof(stdin)) {
+            perror("Error");
+            free(read_buffer);
+            return 1;
         }
         
         // Tokenize the input into lines

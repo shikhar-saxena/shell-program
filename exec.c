@@ -38,9 +38,9 @@ int launch_fg(int argc, char** argv) {
     if(pid < 0) { perror("Fork"); return 1;}
 
     if(pid == 0) { 
-        if (execvp(argv[0], argv) == -1)
-            perror(argv[0]);
-        exit(0);
+        execvp(argv[0], argv);
+        perror(argv[0]);
+        _exit(0);
     }
     else do { 
         w = waitpid(pid, &status, WUNTRACED | WCONTINUED);
