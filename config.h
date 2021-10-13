@@ -4,6 +4,8 @@
 #include "pwd.h" 
 #include "name.h"
 
+extern int shell_pid;
+
 // Returns 1 (on failure)
 int init(); 				// To Initialize the shell
 

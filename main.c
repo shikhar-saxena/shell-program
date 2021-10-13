@@ -1,14 +1,10 @@
 #include "headers.h"
 #include "config.h"
 #include "exec.h"
-#include "utils.h" //!!!!
-
-#define TOKEN_BUFFER_SIZE 100 // Number of arguments read in each line
 
 //-------------------------------------
 // Prompt
 //-------------------------------------
-
 
 // Displays the prompt on stdout
 void display_prompt() {
@@ -24,99 +20,58 @@ void display_prompt() {
         printf("%s>", pwd + home_size);
     }
     else printf("%s>", pwd);
+    fflush(stdout);
 }
 
-// Parses given line into words
-char** parse(char** line) {
+void check_processes() {
 
-    const char* delim = " \t\r\a\n"; char* save_ptr;
-    char* token = strtok_r(*line, delim, &save_ptr);
-    char** argv; // To store each token in the line
+    for(int i = 0; i < JOB_SIZE; i++) {
+        if(job[i].number == -1) continue;
 
-    int count = 0; // To count argc
-    argv = malloc(TOKEN_BUFFER_SIZE * sizeof(char*));
+        int status; pid_t pid;
 
-    while(token != NULL) {
-        argv[count] = token;
-        count++;
-        token = strtok_r(NULL, delim, &save_ptr);
+        pid = waitpid(job[i].pid, &status, WNOHANG | WUNTRACED | WCONTINUED);
+        if(!pid) continue;
+        
+
+        if(WIFEXITED(status)) { /* Terminated normally */
+            if(job[i].job_type == BG)
+                fprintf(stderr, "\n%s with pid %d exited normally\n", job[i].argv[0], job[i].pid);
+            clear_job(i);
+        }
+
+        else if(WIFSIGNALED(status)) { /* Terminated abnormally */
+            if(job[i].job_type == BG)
+                fprintf(stderr, "\n%s with pid %d exited abnormally\n", job[i].argv[0], job[i].pid);
+            clear_job(i);
+        }
+        
+        else if(WIFSTOPPED(status))
+            job[i].job_type = ST;
+
+        else if(WIFCONTINUED(status)) /* if bg command was called */
+            job[i].job_type = BG;
+    }
+}
+
+// /* ^C */
+void sigint_handler(int signum) {
+
+    signal(SIGINT, sigint_handler);
+
+
+    pid_t pid;
+
+    if((pid = fgpid())) {
+        kill(SIGINT, pid);
+        return;
     }
 
-    argv[count] = NULL;
-    return argv;
-}
-
-//!!!!!!
-int args_count(char** argv) {
-
-    int count = 0;
-    while(argv[count] != NULL) count++;
-
-    return count;
-}
-
-// int redirection(int argc, char** argv) {
-
-//     int status;
-
-//     for(int i = 0; i < argc; i++) {
-//         if(!strcmp(argv[i], "<") || !strcmp(argv[i], ">") || !strcmp(argv[i], ">>")) {
-            
-//             if(i == argc - 1) {
-//                 fprintf(stderr, "syntax error near unexpected token `newline\'\n");
-//                 return 0;
-//             }
-
-//             char* path = (argv[i+1][0] == '~') ? make_path(home, home_size, (argv[i+1] + 1), strlen(argv[i+1]) - 1) : argv[i+1];
-//             int fd; 
-            
-//             int option = 1; // STDOUT_FILENO
-            
-//             if(argv[i][0] == '<') {
-//                 fd = open(path, O_RDONLY);
-//                 option = 0;
-//             }
-//             else if(strcmp(argv[i], ">") == 0)
-//                 fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-//             else
-//                 fd = open(path, O_WRONLY | O_APPEND);
-
-//             argv[i] = NULL;
-
-//             if(fd == -1)
-//                 perror(argv[i+1]);
-//             else if(dup2(fd, option) < 0)
-//                 perror("Unable to duplicate file descriptor");
-//             else {
-//                 // Execute commands before redirection character
-//                 status = execute(i, argv);
-//                 dup2(option, option); // Revert back the file descriptors
-//             }
-
-//             if(argv[i+1][0] == '~') path_free(path);
-//             return status;
-//         }
-//     }
-
-//     return execute(argc, argv);
-// }
-
-// Separates line into first and second operands (separated by character `character`)
-// Returns 1 if operator (character) not present
-// Else returns 0
-int check_character(char** line, char** first, char** second, const char* character) {
-
-    char* ptr = NULL;
-    for(int i = 0; i < 2; i++) {
-        ptr = strsep(line, character);
-
-        if(ptr == NULL) break;
-        if(i == 0) *first = ptr;
-        else *second = ptr;
+    if(getpid() == shell_pid) {
+        printf("\n");
+        display_prompt();
+        fflush(stdout);
     }
-
-    if(*second == NULL) return 1; // Operator not found
-    else return 0;
 }
 
 // REPL for shell
@@ -133,93 +88,25 @@ int shell_loop() {
         // Read
         char* read_buffer = NULL; size_t buffer_size = 0;
         
-        if(getline(&read_buffer, &buffer_size, stdin) == -1 && !feof(stdin)) {
-            perror("Error");
+        if(getline(&read_buffer, &buffer_size, stdin) == -1) {
             free(read_buffer);
-            return 1;
+            if(!feof(stdin)) perror("Error");
+            else {
+                printf("\n"); /* for ^D */
+                kill_jobs();
+            }
+            terminate();
         }
         
         // Tokenize the input into lines
         char* save_ptr = NULL;
         char* token = strtok_r(read_buffer, ";\n", &save_ptr);
-        
-        for(;token != NULL; token = strtok_r(NULL, ";\n", &save_ptr)) {
+               
+        for(; token != NULL; token = strtok_r(NULL, ";\n", &save_ptr) ) 
+            if(status = execute_line(&token)) 
+                break;
 
-            char* first = NULL;
-            char* second = NULL;
-
-            // Pipeline Check
-            if(!check_character(&token, &first, &second, "|")) {
-                
-                if(first == NULL || strlen(first) == 0) {
-                    fprintf(stderr, "syntax error near unexpected token `|\'\n");
-                    continue;
-                }
-
-                int pipefd[2];
-                if(pipe(pipefd) < 0) {
-                    perror("Pipe");
-                    continue;
-                }
-                    
-                // Parse first argument
-                char** args1 = parse(&first);
-                char** args2 = parse(&second); 
-                
-                pid_t pid = fork();
-                if(pid < 0) {
-                    perror("Fork");
-                } else if (pid == 0) { // Child writes to pipe
-                    close(pipefd[0]);
-                    close(STDIN_FILENO); // Don't want to read from stdin
-                    dup2(pipefd[1], STDOUT_FILENO); close(pipefd[1]);
-                    status = execute(args_count(args1), args1);
-                    close(STDOUT_FILENO);
-                    _exit(0);
-                } else { // Parent reads from pipe
-
-                    close(pipefd[1]);
-                    int save_fd = dup(STDIN_FILENO);
-                    dup2(pipefd[0], STDIN_FILENO); close(pipefd[0]);
-                    status = execute(args_count(args2), args2);
-                    close(STDIN_FILENO);
-                    dup2(save_fd, STDIN_FILENO); close(save_fd);
-                    
-                    // wait(NULL);
-
-                    if(wait(&status) == -1) perror("Error");
-                    // pid_t pid2 = fork();
-                    // if(pid2 < 0) {
-                    //     perror("Fork");
-                    // } else if (pid2 == 0) { // Child reads from pipe
-                    //     close(pipefd[1]);
-                    //     dup2(pipefd[0], STDIN_FILENO); close(pipefd[0]);
-                    //     status = execute(args_count(args2), args2);
-                    //     close(STDIN_FILENO);
-                    //     close(STDOUT_FILENO);
-                    //     _exit(0);
-                    // } else { // Parent waits for both processes
-                    //     if(waitpid(pid2, &status, 0) == -1) perror("Error");
-                    // }
-                }
-
-                free(args1); free(args2);                    
-            }
-
-            else {
-                // Parse first
-                char** args = parse(&first);
-                status = execute(args_count(args), args);
-                free(args);
-            }
-
-            // Redirection Check
-            // redirection(token);
-
-            // status = eval(token);
-            
-            
-        }
+        check_processes();
 
         free(read_buffer);
 
@@ -228,8 +115,12 @@ int shell_loop() {
     return status;
 }
 
-void main(int argc, char const *argv[])
+int main(int argc, char const *argv[])
 {
-    if(init() || shell_loop())
+    init_job();
+    signal(SIGINT, sigint_handler); /* Ignore SIGINT for shell */
+    if(init() || shell_loop()) 
         terminate();
+    
+    return 0;
 }

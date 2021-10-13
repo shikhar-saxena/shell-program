@@ -17,7 +17,7 @@
 //-------------------------------------
 
 int cmd_exit(int argc, char** argv) {
-	return 1;
+	terminate();
 }
 
 int cmd_pwd(int argc, char**argv) {

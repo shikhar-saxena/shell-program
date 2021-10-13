@@ -4,7 +4,7 @@ main: main.o exec.o cmd.o utils.o config.o pwd.o name.o
 main.o: main.c config.h exec.h headers.h
 	gcc -g -c main.c
 
-exec.o: exec.c cmd.h exec.h headers.h
+exec.o: exec.c cmd.h exec.h utils.h headers.h config.h
 	gcc -g -c exec.c
 
 cmd.o: cmd.c config.h utils.h headers.h

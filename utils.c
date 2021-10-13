@@ -21,6 +21,14 @@ char* make_path(char* abs_path, size_t abs_path_size, char* rel_path, size_t rel
     // path will be freed after use (by calling path_free function)
 }
 
+// make absolute path from home (for relative path)
+char* make_from_home(char* filename) {
+    if(filename[0] == '~') 
+        return make_path(home, home_size, (filename + 1), strlen(filename) - 1);
+    
+    else return filename;
+}
+
 // Deallocates memory
 void path_free(char* str) {
     if(str != NULL) free(str);
